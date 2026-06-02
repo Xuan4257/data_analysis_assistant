@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .deepseek import generate_report_insights
+from .llm import generate_report_insights
 
 
 TABLE_PREVIEW_ROWS = 10
@@ -257,7 +257,7 @@ def generate_report(
     ai_insights = generate_report_insights(insight_summary)
     if not ai_insights:
         ai_insights = (
-            "- DeepSeek API 未启用或暂时不可用，本节使用本地统计结论。\n"
+            "- API 未配置、未启用或暂时不可用，本节使用本地统计结论。\n"
             f"- 当前最佳候选模型为 {best['model']}，测试集 RMSE 为 {best['rmse']}，R² 为 {best['r2']}。\n"
             "- 将模型用于正式决策前，应结合独立验证集和业务语义复核。"
         )
@@ -411,7 +411,7 @@ VIF 明细正文仅展示前 {TABLE_PREVIEW_ROWS} 项，完整表格请查看 `v
 - 持续补充新样本，并对模型表现进行周期性复评。
 - 结合业务定义补充可解释特征，减少仅依赖统计相关性的风险。
 
-### DeepSeek 自然语言补充解释
+### API 自然语言补充解释
 
 {ai_insights}
 
@@ -428,7 +428,7 @@ VIF 明细正文仅展示前 {TABLE_PREVIEW_ROWS} 项，完整表格请查看 `v
 ### 技术说明
 
 - 数据清洗、EDA、回归训练和诊断均在本地执行。
-- DeepSeek 仅接收聚合统计摘要，用于生成自然语言补充解释，不决定报告目录和统计结论。
+- 已配置的 API 仅接收聚合统计摘要，用于生成自然语言补充解释，不决定报告目录和统计结论。
 - 大型结果表保存为 CSV 文件，Markdown 正文只保留核心摘要。
 """
     (output_dir / "report.md").write_text(report, encoding="utf-8")

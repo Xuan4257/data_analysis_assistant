@@ -8,8 +8,10 @@ from .config_service import load_config
 
 def _chat(messages: list[dict[str, str]], timeout: float = 18.0) -> str:
     config = load_config()
-    if not config["enabled"] or not config["api_key"]:
-        raise RuntimeError("DeepSeek API 尚未配置或未启用")
+    if not config["enabled"]:
+        raise RuntimeError("API 尚未启用")
+    if not config["base_url"] or not config["api_key"] or not config["model"]:
+        raise RuntimeError("请完整填写 API Base URL、API Key 和模型名称")
     url = f"{config['base_url'].rstrip('/')}/chat/completions"
     response = httpx.post(
         url,
@@ -56,4 +58,3 @@ def generate_report_insights(summary: dict[str, Any]) -> str | None:
         return content
     except Exception:
         return None
-

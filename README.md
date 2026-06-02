@@ -7,9 +7,9 @@
 - 前端：React、Vite、ECharts
 - 后端：FastAPI、pandas、scikit-learn、statsmodels
 - 环境：Conda `smart-data-analysis`
-- 模型增强：DeepSeek API，可在页面中配置
+- 模型增强：兼容 OpenAI Chat Completions 协议的 API，可在页面中配置
 
-DeepSeek 只接收聚合统计摘要，用于增强报告洞察。数据清洗、EDA 和回归分析在本地执行；未配置 API 时也可完成全部分析步骤。
+已配置的 API 只接收聚合统计摘要，用于增强报告洞察。数据清洗、EDA 和回归分析在本地执行；未配置 API 时也可完成全部分析步骤。
 
 ## 安装
 
@@ -32,7 +32,7 @@ npm install
 .\scripts\start_frontend.ps1
 ```
 
-浏览器访问 `http://127.0.0.1:5173`。首次使用时可进入“DeepSeek 配置”页面填写 API Key。
+浏览器访问 `http://127.0.0.1:5173`。首次使用时可进入“API 配置”页面填写 Base URL、API Key 和模型名称。
 
 ## 分析输出
 
@@ -50,4 +50,3 @@ npm install
 ```powershell
 conda run -n smart-data-analysis pytest -q backend/tests
 ```
-

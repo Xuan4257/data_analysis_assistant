@@ -1,4 +1,5 @@
 import re
+import shutil
 import uuid
 from pathlib import Path
 from typing import Any
@@ -7,13 +8,13 @@ from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
-from .schemas import CleaningConfirmation, DeepSeekConfigInput
+from .schemas import ApiConfigInput, CleaningConfirmation
 from .settings import ALLOWED_EXTENSIONS, MAX_UPLOAD_BYTES, TASKS_DIR, ensure_runtime_dirs
 from .store import TaskStore
 from .services.cleaning import build_cleaning_proposal
 from .services.config_service import load_config, public_config, save_config
 from .services.data_loader import dataframe_preview, load_dataframe
-from .services.deepseek import test_connection
+from .services.llm import test_connection
 from .services.pipeline import run_analysis
 
 
@@ -90,7 +91,7 @@ def get_config() -> dict[str, Any]:
 
 
 @app.put("/api/config")
-def update_config(config: DeepSeekConfigInput) -> dict[str, Any]:
+def update_config(config: ApiConfigInput) -> dict[str, Any]:
     return save_config(config.model_dump())
 
 
@@ -101,6 +102,15 @@ def check_config() -> dict[str, str]:
         return {"status": "ok", "message": message}
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"连接失败：{exc}") from exc
+
+
+@app.get("/api/config/status")
+def get_config_status() -> dict[str, str]:
+    try:
+        test_connection()
+        return {"status": "connected", "message": "连接成功"}
+    except Exception as exc:
+        return {"status": "failed", "message": f"连接失败：{exc}"}
 
 
 @app.get("/api/tasks")
@@ -152,6 +162,21 @@ async def upload_task(file: UploadFile = File(...)) -> dict[str, Any]:
 @app.get("/api/tasks/{task_id}")
 def get_task(task_id: str) -> dict[str, Any]:
     return _public_task(_get_task_or_404(task_id))
+
+
+@app.delete("/api/tasks/{task_id}")
+def delete_task(task_id: str) -> dict[str, str]:
+    task = _get_task_or_404(task_id)
+    if task["status"] in {"queued", "running"}:
+        raise HTTPException(status_code=409, detail="分析任务正在运行，暂时无法删除")
+    tasks_dir = TASKS_DIR.resolve()
+    task_dir = Path(task["task_dir"]).resolve()
+    if task_dir == tasks_dir or tasks_dir not in task_dir.parents:
+        raise HTTPException(status_code=400, detail="非法任务目录")
+    if task_dir.exists():
+        shutil.rmtree(task_dir)
+    store.delete(task_id)
+    return {"status": "deleted", "task_id": task_id}
 
 
 @app.post("/api/tasks/{task_id}/analyze")

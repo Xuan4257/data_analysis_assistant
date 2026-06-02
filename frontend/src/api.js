@@ -23,8 +23,10 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   testConfig: () => request("/api/config/test", { method: "POST" }),
+  configStatus: () => request("/api/config/status"),
   tasks: () => request("/api/tasks"),
   task: (id) => request(`/api/tasks/${id}`),
+  deleteTask: (id) => request(`/api/tasks/${id}`, { method: "DELETE" }),
   upload: (file) => {
     const data = new FormData();
     data.append("file", file);
@@ -36,7 +38,6 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }),
-  reportPreview: (id) => request(`/api/tasks/${id}/report/preview`),
   report: (id) => request(`/api/tasks/${id}/report`),
   reportDownloadUrl: (id) => `/api/tasks/${id}/report/download`,
   fileUrl: (id, path) => `/api/tasks/${id}/files/${path.split("/").map(encodeURIComponent).join("/")}`,

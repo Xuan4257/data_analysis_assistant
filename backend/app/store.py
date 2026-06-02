@@ -94,3 +94,8 @@ class TaskStore:
                 )
         return task
 
+    def delete(self, task_id: str) -> None:
+        with self._lock, self._connect() as connection:
+            cursor = connection.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+            if cursor.rowcount == 0:
+                raise KeyError(task_id)

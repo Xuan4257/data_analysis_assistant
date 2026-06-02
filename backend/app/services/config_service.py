@@ -5,9 +5,9 @@ from ..settings import CONFIG_PATH, ensure_runtime_dirs
 
 
 DEFAULT_CONFIG = {
-    "base_url": "https://api.deepseek.com",
+    "base_url": "",
     "api_key": "",
-    "model": "deepseek-chat",
+    "model": "",
     "enabled": True,
 }
 
@@ -41,4 +41,3 @@ def public_config(config: dict[str, Any] | None = None) -> dict[str, Any]:
         "has_api_key": bool(config.get("api_key")),
         "api_key": "",
     }
-

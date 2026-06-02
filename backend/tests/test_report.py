@@ -56,7 +56,7 @@ def _report_inputs():
 
 
 def test_generate_report_has_fixed_sections_and_csv_outputs(tmp_path, monkeypatch):
-    monkeypatch.setattr(report_service, "generate_report_insights", lambda summary: "- DeepSeek 补充解释。")
+    monkeypatch.setattr(report_service, "generate_report_insights", lambda summary: "- API 补充解释。")
     eda, regression = _report_inputs()
 
     content = report_service.generate_report(
@@ -78,4 +78,3 @@ def test_generate_report_has_fixed_sections_and_csv_outputs(tmp_path, monkeypatc
     assert (tmp_path / "report.md").read_text(encoding="utf-8") == content
     assert (tmp_path / "ols_coefficients.csv").is_file()
     assert (tmp_path / "vif_diagnostics.csv").is_file()
-

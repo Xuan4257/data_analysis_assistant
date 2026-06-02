@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as echarts from "echarts";
 import { api } from "./api";
+import dataCleaningLogo from "./assets/data-cleaning-logo.png";
 
 const STATUS_LABELS = {
   awaiting_confirmation: "待确认",
@@ -59,30 +60,37 @@ function Metric({ label, value, note }) {
   );
 }
 
-function Shell({ view, setView, tasks, children }) {
+function Shell({ view, setView, tasks, apiStatus, onDeleteTask, children }) {
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark"><Icon name="flask" size={21} /></div>
-          <div><strong>INSIGHT</strong><span>FORGE / 01</span></div>
+          <div className="brand-mark"><img src={dataCleaningLogo} alt="" /></div>
+          <div><strong>数据分析助手</strong><span>DATA ANALYSIS</span></div>
         </div>
         <nav>
           <button className={view === "workflow" ? "active" : ""} onClick={() => setView("workflow")}>
             <Icon name="chart" /> 分析工作台
           </button>
           <button className={view === "settings" ? "active" : ""} onClick={() => setView("settings")}>
-            <Icon name="settings" /> DeepSeek 配置
+            <Icon name="settings" /> API 配置
           </button>
         </nav>
         <div className="recent">
+          <div className={`api-status ${apiStatus.status}`}>
+            <span>MODEL API</span>
+            <b>{apiStatus.status === "checking" ? "检测中..." : apiStatus.status === "connected" ? "连接成功" : "连接失败"}</b>
+          </div>
           <p>最近任务</p>
           {tasks.length === 0 && <span className="muted">还没有分析记录</span>}
           {tasks.slice(0, 5).map((task) => (
-            <button key={task.id} onClick={() => setView(`task:${task.id}`)}>
-              <i className={`status-dot ${task.status}`} />
-              <span>{task.filename}</span>
-            </button>
+            <div className="recent-task" key={task.id}>
+              <button className="recent-open" onClick={() => setView(`task:${task.id}`)}>
+                <i className={`status-dot ${task.status}`} />
+                <span>{task.filename}</span>
+              </button>
+              <button className="recent-delete" aria-label={`删除任务 ${task.filename}`} title="删除任务" onClick={() => onDeleteTask(task)}>×</button>
+            </div>
           ))}
         </div>
         <div className="sidebar-foot">
@@ -95,17 +103,20 @@ function Shell({ view, setView, tasks, children }) {
   );
 }
 
-function Settings({ config, setConfig, notify }) {
+function Settings({ config, setConfig, notify, refreshApiStatus }) {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const save = async () => {
+  const save = async ({ checkStatus = true } = {}) => {
     setSaving(true);
     try {
       const next = await api.saveConfig(config);
       setConfig({ ...next, api_key: "" });
-      notify("DeepSeek 配置已保存", "success");
+      notify("API 配置已保存", "success");
+      if (checkStatus) refreshApiStatus();
+      return true;
     } catch (error) {
       notify(error.message, "error");
+      return false;
     } finally {
       setSaving(false);
     }
@@ -113,11 +124,13 @@ function Settings({ config, setConfig, notify }) {
   const test = async () => {
     setTesting(true);
     try {
-      await save();
+      if (!await save({ checkStatus: false })) return;
       const result = await api.testConfig();
-      notify(result.message || "DeepSeek 连接成功", "success");
+      notify(result.message || "API 连接成功", "success");
+      refreshApiStatus();
     } catch (error) {
       notify(error.message, "error");
+      refreshApiStatus();
     } finally {
       setTesting(false);
     }
@@ -126,15 +139,15 @@ function Settings({ config, setConfig, notify }) {
     <section className="page settings-page">
       <header className="page-heading">
         <span className="eyebrow">MODEL CONNECTION / SETTINGS</span>
-        <h1>DeepSeek 配置</h1>
-        <p>API 仅用于增强报告洞察。统计计算与回归建模始终在本地完成。</p>
+        <h1>API 配置</h1>
+        <p>支持兼容 OpenAI Chat Completions 协议的 API。接口仅用于增强报告洞察，统计计算与回归建模始终在本地完成。</p>
       </header>
       <div className="settings-grid">
         <div className="config-card">
           <div className="section-title"><span>01</span><h2>接口参数</h2></div>
-          <label>API Base URL<input value={config.base_url || ""} onChange={(event) => setConfig({ ...config, base_url: event.target.value })} /></label>
+          <label>API Base URL<input placeholder="例如：https://api.openai.com/v1" value={config.base_url || ""} onChange={(event) => setConfig({ ...config, base_url: event.target.value })} /></label>
           <label>API Key<input type="password" placeholder={config.has_api_key ? "已保存密钥，留空则保持不变" : "sk-..."} value={config.api_key || ""} onChange={(event) => setConfig({ ...config, api_key: event.target.value })} /></label>
-          <label>模型名称<input value={config.model || ""} onChange={(event) => setConfig({ ...config, model: event.target.value })} /></label>
+          <label>模型名称<input placeholder="例如：gpt-4o-mini、deepseek-chat" value={config.model || ""} onChange={(event) => setConfig({ ...config, model: event.target.value })} /></label>
           <label className="toggle-row">
             <span><b>启用智能洞察</b><small>关闭后报告将使用本地统计摘要</small></span>
             <input type="checkbox" checked={config.enabled ?? true} onChange={(event) => setConfig({ ...config, enabled: event.target.checked })} />
@@ -147,10 +160,10 @@ function Settings({ config, setConfig, notify }) {
         <aside className="note-card">
           <span className="eyebrow">PRIVACY NOTE</span>
           <h3>数据留在本机</h3>
-          <p>系统向 DeepSeek 发送的是聚合统计摘要，不会上传原始数据行。密钥保存在后端本地配置文件中。</p>
+          <p>系统向你配置的 API 发送聚合统计摘要，不会上传原始数据行。密钥保存在后端本地配置文件中。</p>
           <div className="line" />
-          <small>默认地址</small>
-          <code>https://api.deepseek.com</code>
+          <small>兼容示例</small>
+          <code>OpenAI / DeepSeek / 兼容网关</code>
         </aside>
       </div>
     </section>
@@ -191,6 +204,10 @@ function Proposal({ task, onAnalyze, busy }) {
     next.has(value) ? next.delete(value) : next.add(value);
     return next;
   });
+  const allSuggestionsSelected = proposal.suggestions.length > 0 && selected.size === proposal.suggestions.length;
+  const toggleAllSuggestions = () => {
+    setSelected(allSuggestionsSelected ? new Set() : new Set(proposal.suggestions.map((item) => item.id)));
+  };
   const submit = () => onAnalyze({
     accepted_suggestion_ids: [...selected],
     target_column: target,
@@ -211,7 +228,17 @@ function Proposal({ task, onAnalyze, busy }) {
       </div>
       <div className="review-layout">
         <div>
-          <div className="section-title"><span>01</span><h2>清洗建议</h2><small>{selected.size} 项已选择</small></div>
+          <div className="section-title">
+            <span>01</span><h2>清洗建议</h2>
+            <div className="selection-tools">
+              <small>{selected.size} 项已选择</small>
+              <label className="select-all">
+                <input type="checkbox" checked={allSuggestionsSelected} onChange={toggleAllSuggestions} disabled={proposal.suggestions.length === 0} />
+                <span className="select-all-box"><Icon name="check" size={12} /></span>
+                全选
+              </label>
+            </div>
+          </div>
           <div className="suggestion-list">
             {proposal.suggestions.length === 0 && <div className="empty-small">数据质量良好，没有自动清洗建议。</div>}
             {proposal.suggestions.map((item) => (
@@ -276,23 +303,12 @@ function ReportViewer({ task }) {
     let active = true;
     setLoading(true);
     setError("");
-    api.reportPreview(task.id)
+    api.report(task.id)
       .then((next) => active && setReport(next))
       .catch((requestError) => active && setError(requestError.message))
       .finally(() => active && setLoading(false));
     return () => { active = false; };
   }, [task.id]);
-  const loadFullReport = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      setReport(await api.report(task.id));
-    } catch (requestError) {
-      setError(requestError.message);
-    } finally {
-      setLoading(false);
-    }
-  };
   return (
     <div className={`report-card ${fullscreen ? "report-fullscreen" : ""}`}>
       <div className="report-toolbar">
@@ -302,11 +318,9 @@ function ReportViewer({ task }) {
           <a className="button secondary" href={api.reportDownloadUrl(task.id)}><Icon name="download" /> 下载完整报告</a>
         </div>
       </div>
-      {report?.is_preview && <p className="report-note">当前为预览内容，完整报告请点击下载，或选择“查看完整报告”。</p>}
       {loading && <p className="report-state">正在读取报告...</p>}
       {error && <p className="report-state error">报告读取失败：{error}</p>}
       {!loading && !error && <pre>{report?.content || "报告内容为空。"}</pre>}
-      {report?.is_preview && <button className="button primary" onClick={loadFullReport} disabled={loading}><Icon name="file" /> 查看完整报告</button>}
     </div>
   );
 }
@@ -320,24 +334,24 @@ function Results({ task }) {
   const heatmapOption = useMemo(() => ({
     tooltip: { position: "top" },
     grid: { left: 85, right: 22, top: 20, bottom: 75 },
-    xAxis: { type: "category", data: eda.correlation.columns, axisLabel: { rotate: 40, color: "#9ab1b0" } },
-    yAxis: { type: "category", data: eda.correlation.columns, axisLabel: { color: "#9ab1b0" } },
-    visualMap: { min: -1, max: 1, calculable: true, orient: "horizontal", left: "center", bottom: 2, inRange: { color: ["#35676f", "#e8e1d2", "#e66b3d"] }, textStyle: { color: "#9ab1b0" } },
+    xAxis: { type: "category", data: eda.correlation.columns, axisLabel: { rotate: 40, color: "#c3cedb" } },
+    yAxis: { type: "category", data: eda.correlation.columns, axisLabel: { color: "#c3cedb" } },
+    visualMap: { min: -1, max: 1, calculable: true, orient: "horizontal", left: "center", bottom: 2, inRange: { color: ["#315f93", "#f8fafc", "#3b82f6"] }, textStyle: { color: "#c3cedb" } },
     series: [{ type: "heatmap", data: eda.correlation.values.flatMap((row, y) => row.map((value, x) => [x, y, value])), emphasis: { itemStyle: { shadowBlur: 12, shadowColor: "rgba(0,0,0,.45)" } } }],
   }), [eda]);
   const comparisonOption = useMemo(() => ({
     tooltip: { trigger: "axis" },
     grid: { left: 55, right: 20, top: 25, bottom: 65 },
-    xAxis: { type: "category", data: successful.map((item) => item.model), axisLabel: { rotate: 18, color: "#9ab1b0" } },
-    yAxis: { type: "value", name: "RMSE", axisLabel: { color: "#9ab1b0" }, splitLine: { lineStyle: { color: "rgba(154,177,176,.14)" } } },
-    series: [{ type: "bar", data: successful.map((item) => item.rmse), itemStyle: { color: "#e66b3d", borderRadius: [3, 3, 0, 0] } }],
+    xAxis: { type: "category", data: successful.map((item) => item.model), axisLabel: { rotate: 18, color: "#c3cedb" } },
+    yAxis: { type: "value", name: "RMSE", axisLabel: { color: "#c3cedb" }, splitLine: { lineStyle: { color: "rgba(195,206,219,.14)" } } },
+    series: [{ type: "bar", data: successful.map((item) => item.rmse), itemStyle: { color: "#3b82f6", borderRadius: [3, 3, 0, 0] } }],
   }), [successful]);
   const predictionOption = useMemo(() => ({
     tooltip: { trigger: "item" },
     grid: { left: 60, right: 20, top: 25, bottom: 45 },
-    xAxis: { type: "value", name: "实际值", axisLabel: { color: "#9ab1b0" }, splitLine: { lineStyle: { color: "rgba(154,177,176,.14)" } } },
-    yAxis: { type: "value", name: "预测值", axisLabel: { color: "#9ab1b0" }, splitLine: { lineStyle: { color: "rgba(154,177,176,.14)" } } },
-    series: [{ type: "scatter", symbolSize: 9, data: regression.prediction_chart.map((item) => [item.actual, item.predicted]), itemStyle: { color: "#d8ad52" } }],
+    xAxis: { type: "value", name: "实际值", axisLabel: { color: "#c3cedb" }, splitLine: { lineStyle: { color: "rgba(195,206,219,.14)" } } },
+    yAxis: { type: "value", name: "预测值", axisLabel: { color: "#c3cedb" }, splitLine: { lineStyle: { color: "rgba(195,206,219,.14)" } } },
+    series: [{ type: "scatter", symbolSize: 9, data: regression.prediction_chart.map((item) => [item.actual, item.predicted]), itemStyle: { color: "#93c5fd" } }],
   }), [regression]);
   return (
     <section className="page results-page">
@@ -377,9 +391,16 @@ function App() {
   const [task, setTask] = useState(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(null);
-  const [config, setConfig] = useState({ base_url: "https://api.deepseek.com", model: "deepseek-chat", enabled: true, api_key: "" });
+  const [apiStatus, setApiStatus] = useState({ status: "checking", message: "正在检测 API 连接" });
+  const [config, setConfig] = useState({ base_url: "", model: "", enabled: true, api_key: "" });
   const notify = (message, type = "info") => { setNotice({ message, type }); setTimeout(() => setNotice(null), 4200); };
   const refreshTasks = () => api.tasks().then(setTasks).catch(() => {});
+  const refreshApiStatus = () => {
+    setApiStatus({ status: "checking", message: "正在检测 API 连接" });
+    return api.configStatus()
+      .then(setApiStatus)
+      .catch((error) => setApiStatus({ status: "failed", message: error.message }));
+  };
   const refreshTask = async (id = task?.id) => {
     if (!id) return;
     try {
@@ -393,6 +414,7 @@ function App() {
   useEffect(() => {
     api.config().then((data) => setConfig({ ...data, api_key: "" })).catch(() => {});
     refreshTasks();
+    refreshApiStatus();
   }, []);
   useEffect(() => {
     if (view.startsWith("task:")) {
@@ -430,14 +452,25 @@ function App() {
       setBusy(false);
     }
   };
+  const deleteTask = async (targetTask) => {
+    if (!window.confirm(`确定删除“${targetTask.filename}”这份数据分析吗？删除后无法恢复。`)) return;
+    try {
+      await api.deleteTask(targetTask.id);
+      if (task?.id === targetTask.id) setTask(null);
+      await refreshTasks();
+      notify("任务已删除", "success");
+    } catch (error) {
+      notify(error.message, "error");
+    }
+  };
   let content;
-  if (view === "settings") content = <Settings config={config} setConfig={setConfig} notify={notify} />;
+  if (view === "settings") content = <Settings config={config} setConfig={setConfig} notify={notify} refreshApiStatus={refreshApiStatus} />;
   else if (!task) content = <UploadPanel onUpload={upload} busy={busy} />;
   else if (task.status === "awaiting_confirmation") content = <Proposal task={task} onAnalyze={analyze} busy={busy} />;
   else if (["queued", "running"].includes(task.status)) content = <Progress task={task} refresh={() => refreshTask()} />;
   else if (task.status === "completed") content = <Results task={task} />;
   else content = <section className="progress-page"><span className="eyebrow">ANALYSIS FAILED</span><h1>分析没有完成</h1><p>{task.error}</p><button className="button secondary" onClick={() => setTask(null)}>重新上传数据</button></section>;
-  return <Shell view={view} setView={setView} tasks={tasks}>{content}{notice && <div className={`notice ${notice.type}`}>{notice.message}</div>}</Shell>;
+  return <Shell view={view} setView={setView} tasks={tasks} apiStatus={apiStatus} onDeleteTask={deleteTask}>{content}{notice && <div className={`notice ${notice.type}`}>{notice.message}</div>}</Shell>;
 }
 
 export default App;
