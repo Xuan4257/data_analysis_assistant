@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as echarts from "echarts";
 import { api } from "./api";
-import dataCleaningLogo from "./assets/data-cleaning-logo.png";
 
 const STATUS_LABELS = {
   awaiting_confirmation: "待确认",
@@ -16,6 +15,14 @@ function Icon({ name, size = 18 }) {
     upload: "M12 16V4m0 0L7 9m5-5 5 5M5 20h14",
     flask: "M9 3h6m-1 0v5l5.2 8.7A2.2 2.2 0 0 1 17.3 20H6.7a2.2 2.2 0 0 1-1.9-3.3L10 8V3",
     settings: "M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7.4-3.5.1-1.4 2-1.5-2-3.4-2.3.9a7.7 7.7 0 0 0-2.4-1.4L14.5 2h-5L9 4.7a7.7 7.7 0 0 0-2.3 1.4l-2.4-.9-2 3.4 2.1 1.6-.1 1.4.1 1.4-2.1 1.6 2 3.4 2.4-.9A7.7 7.7 0 0 0 9 19.3l.5 2.7h5l.5-2.7a7.7 7.7 0 0 0 2.3-1.4l2.4.9 2-3.4-2.1-1.6.1-1.4-.3-.4Z",
+    home: "M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z",
+    database: "M4 6c0 1.7 3.6 3 8 3s8-1.3 8-3-3.6-3-8-3-8 1.3-8 3Zm0 0v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6",
+    folder: "M3 6.5h6l2 2h10v9.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z",
+    box: "m12 3 8 4.5v9L12 21l-8-4.5v-9Zm0 9 8-4.5M12 12 4 7.5M12 12v9",
+    book: "M5 4h12a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2Zm0 0v14M8 7h7",
+    bell: "M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 20a2 2 0 0 0 4 0",
+    clock: "M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0",
+    trash: "M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3",
     arrow: "M5 12h13m-5-5 5 5-5 5",
     check: "m5 12 4 4L19 6",
     download: "M12 4v11m0 0 4-4m-4 4-4-4M5 20h14",
@@ -61,41 +68,35 @@ function Metric({ label, value, note }) {
 }
 
 function Shell({ view, setView, tasks, apiStatus, onDeleteTask, children }) {
+  const navItems = [
+    ["workflow", "home", "分析工作台"],
+    ["settings", "settings", "API 配置"],
+    ["workflow", "database", "数据管理"],
+  ];
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark"><img src={dataCleaningLogo} alt="" /></div>
-          <div><strong>数据分析助手</strong><span>DATA ANALYSIS</span></div>
+          <div className="brand-mark" aria-hidden="true">DS</div>
+          <div><strong>数据分析助手</strong><span>智能数据分析平台</span></div>
         </div>
         <nav>
-          <button className={view === "workflow" ? "active" : ""} onClick={() => setView("workflow")}>
-            <Icon name="chart" /> 分析工作台
-          </button>
-          <button className={view === "settings" ? "active" : ""} onClick={() => setView("settings")}>
-            <Icon name="settings" /> API 配置
-          </button>
+          {navItems.map(([target, icon, label]) => (
+            <button className={view === target ? "active" : ""} key={target} onClick={() => setView(target)}>
+              <Icon name={icon} /> {label}
+            </button>
+          ))}
         </nav>
-        <div className="recent">
+        <div className="sidebar-model">
           <div className={`api-status ${apiStatus.status}`}>
-            <span>MODEL API</span>
+            <span>模型状态</span>
             <b>{apiStatus.status === "checking" ? "检测中..." : apiStatus.status === "connected" ? "连接成功" : "连接失败"}</b>
           </div>
-          <p>最近任务</p>
-          {tasks.length === 0 && <span className="muted">还没有分析记录</span>}
-          {tasks.slice(0, 5).map((task) => (
-            <div className="recent-task" key={task.id}>
-              <button className="recent-open" onClick={() => setView(`task:${task.id}`)}>
-                <i className={`status-dot ${task.status}`} />
-                <span>{task.filename}</span>
-              </button>
-              <button className="recent-delete" aria-label={`删除任务 ${task.filename}`} title="删除任务" onClick={() => onDeleteTask(task)}>×</button>
-            </div>
-          ))}
-        </div>
-        <div className="sidebar-foot">
-          <span>LOCAL WORKSPACE</span>
-          <b>FastAPI × React</b>
+          <dl>
+            <div><dt>当前模型</dt><dd>可配置</dd></div>
+            <div><dt>API 服务</dt><dd>{apiStatus.status === "connected" ? "已连接" : "待连接"}</dd></div>
+            <div><dt>今日任务</dt><dd>{tasks.length} 次</dd></div>
+          </dl>
         </div>
       </aside>
       <main>{children}</main>
@@ -170,25 +171,118 @@ function Settings({ config, setConfig, notify, refreshApiStatus }) {
   );
 }
 
-function UploadPanel({ onUpload, busy }) {
+function DashboardStat({ icon, label, value, note, tone }) {
+  return (
+    <div className="dashboard-stat">
+      <span className={`stat-icon ${tone}`}><Icon name={icon} /></span>
+      <div>
+        <small>{label}</small>
+        <strong>{value}</strong>
+        <em>{note}</em>
+      </div>
+    </div>
+  );
+}
+
+function MiniLineChart() {
+  return (
+    <svg className="mini-chart" viewBox="0 0 420 210" role="img" aria-label="输出趋势示意图">
+      <defs>
+        <linearGradient id="lineFill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#2f7df6" stopOpacity=".22" />
+          <stop offset="100%" stopColor="#2f7df6" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {[40, 80, 120, 160].map((y) => <line key={y} x1="28" x2="398" y1={y} y2={y} />)}
+      <polyline points="28,178 78,132 128,102 178,118 228,88 278,48 328,70 378,44" />
+      <polygon points="28,178 78,132 128,102 178,118 228,88 278,48 328,70 378,44 378,190 28,190" />
+      {[[28,178], [78,132], [128,102], [178,118], [228,88], [278,48], [328,70], [378,44]].map(([x, y]) => <circle key={`${x}-${y}`} cx={x} cy={y} r="5" />)}
+      <text x="28" y="206">1月</text><text x="128" y="206">2月</text><text x="228" y="206">4月</text><text x="360" y="206">6月</text>
+    </svg>
+  );
+}
+
+function UploadPanel({ onUpload, busy, tasks, apiStatus, onDeleteTask, setView }) {
   const input = useRef(null);
   const [dragging, setDragging] = useState(false);
   const choose = (file) => file && onUpload(file);
+  const completed = tasks.filter((item) => item.status === "completed").length;
+  const active = tasks.filter((item) => ["queued", "running"].includes(item.status)).length;
+  const latest = tasks.slice(0, 5);
   return (
-    <section className="upload-panel">
-      <span className="eyebrow">NEW ANALYSIS / DATA INTAKE</span>
-      <h1>把数据交给工作台，<br /><em>让诊断路径自己展开。</em></h1>
-      <p>上传 CSV、Excel 或 JSON 文件。系统会先给出清洗建议，经你确认后再进入回归分析。</p>
-      <div className={`dropzone ${dragging ? "dragging" : ""}`} onDragOver={(event) => { event.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={(event) => { event.preventDefault(); setDragging(false); choose(event.dataTransfer.files[0]); }}>
-        <input ref={input} type="file" accept=".csv,.xlsx,.xls,.json" onChange={(event) => choose(event.target.files[0])} />
-        <div className="drop-icon"><Icon name="upload" size={30} /></div>
-        <b>{busy ? "正在读取数据..." : "拖入数据文件"}</b>
-        <span>或</span>
-        <button className="button primary" onClick={() => input.current?.click()} disabled={busy}>选择本地文件</button>
-        <small>CSV / XLSX / XLS / JSON · 最大 50 MB</small>
+    <section className="dashboard-page">
+      <header className="dashboard-top">
+        <div>
+          <h1>欢迎回来，数据分析师</h1>
+          <p>今天是 2026年6月9日，准备好探索你的数据了吗？</p>
+        </div>
+      </header>
+
+      <div className="dashboard-stats">
+        <DashboardStat icon="database" label="数据集" value={tasks.length || 0} note="本地任务记录" tone="blue" />
+        <DashboardStat icon="chart" label="分析任务" value={tasks.length || 0} note={`运行中 ${active}`} tone="green" />
+        <DashboardStat icon="file" label="完成报告" value={completed} note="可下载报告" tone="purple" />
+        <DashboardStat icon="clock" label="运行中" value={active} note={apiStatus.status === "connected" ? "API 已连接" : "API 待配置"} tone="orange" />
       </div>
-      <div className="feature-strip">
-        <span>01 清洗建议确认</span><span>02 EDA 可视化</span><span>03 自适应回归</span><span>04 Markdown 报告</span>
+
+      <div className="dashboard-main-grid">
+        <div className={`dashboard-upload ${dragging ? "dragging" : ""}`} onDragOver={(event) => { event.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={(event) => { event.preventDefault(); setDragging(false); choose(event.dataTransfer.files[0]); }}>
+          <input ref={input} type="file" accept=".csv,.xlsx,.xls,.json" onChange={(event) => choose(event.target.files[0])} />
+          <div className="upload-orb"><Icon name="upload" size={34} /></div>
+          <div><b>{busy ? "正在读取数据..." : "拖拽文件到这里，或 "}<button onClick={() => input.current?.click()} disabled={busy}>点击上传</button></b><span>支持 CSV、Excel、JSON 文件，最大 50 MB</span></div>
+          <small>数据仅用于分析，不会被存储用于模型训练</small>
+        </div>
+
+        <aside className="quick-card">
+          <h2>快速开始</h2>
+          <button onClick={() => input.current?.click()}><span className="quick-icon blue"><Icon name="file" /></span><b>新建分析项目</b><small>从上传数据开始分析</small><i>+</i></button>
+          <button><span className="quick-icon green"><Icon name="database" /></span><b>导入示例数据</b><small>使用内置示例数据集</small><i>⌁</i></button>
+          <button onClick={() => setView("settings")}><span className="quick-icon mint"><Icon name="key" /></span><b>使用 API 分析</b><small>通过 API 提交数据分析</small><i>↗</i></button>
+        </aside>
+      </div>
+
+      <section className="workflow-card">
+        <h2>分析流程</h2>
+        {["数据上传", "数据清洗", "探索分析", "建模分析", "生成报告"].map((label, index) => (
+          <div className={index === 0 ? "active" : ""} key={label}><span>{index + 1}</span><b>{label}</b><small>{["导入数据文件", "处理缺失值与异常", "EDA 可视化分析", "回归与预测分析", "输出分析报告"][index]}</small></div>
+        ))}
+      </section>
+
+      <div className="dashboard-bottom-grid">
+        <section className="panel-card dataset-card">
+          <header><h2>最近数据集</h2><button>查看全部 <Icon name="arrow" size={14} /></button></header>
+          <table>
+            <thead><tr><th>文件名</th><th>状态</th><th>更新时间</th><th></th></tr></thead>
+            <tbody>
+              {latest.length === 0 && <tr><td colSpan="4">还没有分析记录</td></tr>}
+              {latest.map((item) => (
+                <tr key={item.id}>
+                  <td><span className="file-pill">{item.filename.split(".").pop()?.toUpperCase() || "DATA"}</span>{item.filename}</td>
+                  <td><span className={`status-badge ${item.status}`}>{STATUS_LABELS[item.status] || item.status}</span></td>
+                  <td>{new Date(item.updated_at || item.created_at).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}</td>
+                  <td><button className="table-delete" onClick={() => onDeleteTask(item)}><Icon name="trash" size={14} /></button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+
+        <section className="panel-card pipeline-card">
+          <header><h2>分析流水线状态</h2><button>查看全部 <Icon name="arrow" size={14} /></button></header>
+          {(latest.length ? latest : [{ id: "empty", filename: "暂无任务", status: "awaiting_confirmation", progress: 0 }]).slice(0, 4).map((item) => (
+            <div className="pipeline-row" key={item.id}>
+              <span className={`pipeline-dot ${item.status}`}><Icon name={item.status === "completed" ? "check" : item.status === "failed" ? "close" : "chart"} size={14} /></span>
+              <div><b>{item.filename}</b><small>{STATUS_LABELS[item.status] || "待开始"} · {item.progress || 0}%</small><i style={{ width: `${item.progress || 0}%` }} /></div>
+            </div>
+          ))}
+        </section>
+
+        <section className="panel-card preview-card">
+          <header><h2>输出预览</h2><button>查看全部 <Icon name="arrow" size={14} /></button></header>
+          <div className="preview-tabs"><span className="active">图表示例</span><span>表格预览</span><span>报告预览</span></div>
+          <h3>数据趋势分析（示例）</h3>
+          <MiniLineChart />
+        </section>
       </div>
     </section>
   );
@@ -465,7 +559,7 @@ function App() {
   };
   let content;
   if (view === "settings") content = <Settings config={config} setConfig={setConfig} notify={notify} refreshApiStatus={refreshApiStatus} />;
-  else if (!task) content = <UploadPanel onUpload={upload} busy={busy} />;
+  else if (!task) content = <UploadPanel onUpload={upload} busy={busy} tasks={tasks} apiStatus={apiStatus} onDeleteTask={deleteTask} setView={setView} />;
   else if (task.status === "awaiting_confirmation") content = <Proposal task={task} onAnalyze={analyze} busy={busy} />;
   else if (["queued", "running"].includes(task.status)) content = <Progress task={task} refresh={() => refreshTask()} />;
   else if (task.status === "completed") content = <Results task={task} />;

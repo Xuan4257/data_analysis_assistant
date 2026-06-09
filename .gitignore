@@ -19,6 +19,7 @@ frontend/dist/
 
 # Runtime data and logs
 backend/data/
+testdata/
 *.log
 
 # Editors and OS files
